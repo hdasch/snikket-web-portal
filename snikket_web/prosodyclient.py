@@ -17,9 +17,9 @@ import xml.etree.ElementTree as ET
 
 from quart import (
     current_app, _app_ctx_stack, session as http_session, abort, redirect,
-    url_for,
+    Quart, Response, url_for,
 )
-import quart.exceptions
+import werkzeug.exceptions
 
 from . import xmpputil
 from .xmpputil import split_jid
@@ -249,7 +249,7 @@ class ProsodyClient:
     SESSION_CACHED_SCOPE = "prosody_scope_cache"
     SESSION_ADDRESS = "prosody_jid"
 
-    def __init__(self, app: typing.Optional[quart.Quart] = None):
+    def __init__(self, app: typing.Optional[Quart] = None):
         self._default_login_redirect: typing.Optional[str] = None
         self._plain_session = HTTPSessionManager(self.CTX_PLAIN_SESSION)
         self._auth_session = HTTPAuthSessionManager(self.CTX_AUTH_SESSION,
@@ -269,7 +269,7 @@ class ProsodyClient:
     def default_login_redirect(self, v: str) -> None:
         self._default_login_redirect = v
 
-    def init_app(self, app: quart.Quart) -> None:
+    def init_app(self, app: Quart) -> None:
         app.config[self.CONFIG_ENDPOINT]
         app.teardown_appcontext(self._plain_session.teardown)
         app.teardown_appcontext(self._auth_session.teardown)
@@ -386,16 +386,16 @@ class ProsodyClient:
             ) -> typing.Callable[
                 [typing.Callable[..., typing.Awaitable[T]]],
                 typing.Callable[..., typing.Awaitable[
-                    typing.Union[T, quart.Response]]]]:
+                    typing.Union[T, Response]]]]:
         def decorator(
                 f: typing.Callable[..., typing.Awaitable[T]],
                 ) -> typing.Callable[..., typing.Awaitable[
-                    typing.Union[T, quart.Response]]]:
+                    typing.Union[T, Response]]]:
             @functools.wraps(f)
             async def wrapped(
                     *args: typing.Any,
                     **kwargs: typing.Any,
-                    ) -> typing.Union[T, quart.Response]:
+                    ) -> typing.Union[T, Response]:
                 if not self.has_session or not (await self.test_session()):
                     redirect_to_value = redirect_to
                     if redirect_to_value is not False:
@@ -415,17 +415,17 @@ class ProsodyClient:
             ) -> typing.Callable[
                 [typing.Callable[..., typing.Awaitable[T]]],
                 typing.Callable[..., typing.Awaitable[
-                    typing.Union[T, quart.Response]]]]:
+                    typing.Union[T, Response]]]]:
         def decorator(
                 f: typing.Callable[..., typing.Awaitable[T]],
                 ) -> typing.Callable[..., typing.Awaitable[
-                    typing.Union[T, quart.Response]]]:
+                    typing.Union[T, Response]]]:
             @functools.wraps(f)
             @self.require_session(redirect_to=redirect_to)
             async def wrapped(
                     *args: typing.Any,
                     **kwargs: typing.Any,
-                    ) -> typing.Union[T, quart.Response]:
+                    ) -> typing.Union[T, Response]:
                 if not self.is_admin_session:
                     raise abort(403, "This is not for you.")
 
@@ -492,7 +492,7 @@ class ProsodyClient:
                 session=session,
             )
             avatar_hash = avatar_info["sha1"]
-        except quart.exceptions.HTTPException:
+        except werkzeug.exceptions.HTTPException:
             avatar_hash = None
 
         return {
@@ -644,7 +644,7 @@ class ProsodyClient:
                     new_access_model,
                 )
             ))
-        except quart.exceptions.NotFound:
+        except werkzeug.exceptions.NotFound:
             if ignore_not_found:
                 return
             raise
@@ -774,7 +774,7 @@ class ProsodyClient:
             session: aiohttp.ClientSession,
             ) -> str:
         access_models = filter(
-            lambda x: not isinstance(x, quart.exceptions.NotFound),
+            lambda x: not isinstance(x, werkzeug.exceptions.NotFound),
             await asyncio.gather(
                 self.get_avatar_access_model(session=session),
                 self.get_nickname_access_model(session=session),

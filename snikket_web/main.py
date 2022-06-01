@@ -18,6 +18,11 @@ from quart import (
     flash,
 )
 
+import werkzeug.exceptions
+from werkzeug.exceptions import (
+    Unauthorized,
+)
+
 import babel
 import wtforms
 
@@ -32,7 +37,7 @@ bp = quart.Blueprint("main", __name__)
 
 
 class LoginForm(BaseForm):
-    address = wtforms.TextField(
+    address = wtforms.StringField(
         _l("Address"),
         validators=[wtforms.validators.InputRequired()],
     )
@@ -76,7 +81,7 @@ async def login() -> typing.Union[str, quart.Response]:
             password = form.password.data
             try:
                 await client.login(jid, password)
-            except quart.exceptions.Unauthorized:
+            except werkzeug.exceptions.Unauthorized:
                 form.password.errors.append(ERR_CREDENTIALS_INVALID)
             else:
                 await flash(
@@ -102,7 +107,7 @@ async def about() -> str:
         extra_versions["flask-wtf"] = flask_wtf.__version__
         try:
             extra_versions["Prosody"] = await client.get_server_version()
-        except quart.exceptions.Unauthorized:
+        except werkzeug.exceptions.Unauthorized:
             extra_versions["Prosody"] = "unknown"
 
     return await render_template(

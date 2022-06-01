@@ -1,4 +1,4 @@
-pyscss~=1.3
+pyscss
 mypy
-python-dotenv~=0.15
+python-dotenv
 types-toml

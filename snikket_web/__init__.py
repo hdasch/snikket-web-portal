@@ -11,11 +11,17 @@ import quart.flask_patch
 
 import quart
 from quart import (
+    Quart,
+    Response,
     url_for,
     render_template,
     current_app,
     redirect,
     jsonify,
+)
+
+from werkzeug.exceptions import (
+    HTTPException,
 )
 
 import environ
@@ -40,7 +46,7 @@ async def proc() -> typing.Dict[str, typing.Any]:
 
     try:
         user_info = await infra.client.get_user_info()
-    except (aiohttp.ClientError, quart.exceptions.HTTPException):
+    except (aiohttp.ClientError, HTTPException):
         user_info = {}
 
     return {
@@ -87,14 +93,14 @@ async def render_exception_template(
     )
 
 
-async def backend_error_handler(exc: Exception) -> quart.Response:
+async def backend_error_handler(exc: Exception) -> Response:
     error_id = infra.generate_error_id()
     current_app.logger.error(
         "error_id=%s returning 503 status page for exception",
         error_id,
         exc_info=exc,
     )
-    return quart.Response(
+    return Response(
         await render_exception_template(
             "backend_error.html",
             exc,
@@ -105,9 +111,9 @@ async def backend_error_handler(exc: Exception) -> quart.Response:
 
 
 async def generic_http_error(
-        exc: quart.exceptions.HTTPException,
-        ) -> quart.Response:
-    return quart.Response(
+        exc: HTTPException,
+        ) -> Response:
+    return Response(
         await render_template(
             "generic_http_error.html",
             status=exc.status_code,
@@ -120,14 +126,14 @@ async def generic_http_error(
 
 async def generic_error_handler(
         exc: Exception,
-        ) -> quart.Response:
+        ) -> Response:
     error_id = infra.generate_error_id()
     current_app.logger.error(
         "error_id=%s returning 500 status page for exception",
         error_id,
         exc_info=exc,
     )
-    return quart.Response(
+    return Response(
         await render_exception_template(
             "internal_error.html",
             exc,
@@ -168,7 +174,7 @@ class AppConfig:
 _UPPER_CASE = "".join(map(chr, range(ord("A"), ord("Z")+1)))
 
 
-def create_app() -> quart.Quart:
+def create_app() -> Quart:
     try:
         env_init = os.environ["SNIKKET_WEB_PYENV"]
     except KeyError:
@@ -185,7 +191,7 @@ def create_app() -> quart.Quart:
 
     config = environ.to_config(AppConfig)
 
-    app = quart.Quart(__name__)
+    app = Quart(__name__)
     app.config["LANGUAGES"] = config.languages
     app.config["SECRET_KEY"] = config.secret_key
     app.config["PROSODY_ENDPOINT"] = config.prosody_endpoint
@@ -202,7 +208,7 @@ def create_app() -> quart.Quart:
         backend_error_handler,  # type:ignore
     )
     app.register_error_handler(
-        quart.exceptions.HTTPException,
+        HTTPException,
         generic_http_error,  # type:ignore
     )
     app.register_error_handler(
@@ -211,14 +217,14 @@ def create_app() -> quart.Quart:
     )
 
     @app.route("/")
-    async def index() -> quart.Response:
+    async def index() -> Response:
         if infra.client.has_session:
             return redirect(url_for('user.index'))
 
         return redirect(url_for('main.login'))
 
     @app.route("/site.webmanifest")
-    def site_manifest() -> quart.Response:
+    def site_manifest() -> Response:
         # this is needed for icons
         return jsonify(
             {

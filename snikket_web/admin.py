@@ -10,7 +10,6 @@ import aiohttp
 import quart.flask_patch
 
 import wtforms
-import wtforms.fields.html5
 
 from quart import (
     Blueprint,
@@ -657,7 +656,7 @@ async def system() -> typing.Union[str, quart.Response]:
         now = time.time()
         try:
             prosody_metrics = await client.get_system_metrics()
-        except quart.exceptions.NotFound:
+        except werkzeug.exceptions.NotFound:
             # server does not offer the endpoint for whatever reason -- ignore
             prosody_metrics = {}
 
