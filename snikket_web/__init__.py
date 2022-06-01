@@ -148,6 +148,7 @@ class AppConfig:
     secret_key = environ.var()
     prosody_endpoint = environ.var()
     domain = environ.var()
+    tweak_xmpp_domain = environ.var(None)
     site_name = environ.var("")
     avatar_cache_ttl = environ.var(1800, converter=int)
     languages = environ.var([
@@ -195,7 +196,7 @@ def create_app() -> Quart:
     app.config["LANGUAGES"] = config.languages
     app.config["SECRET_KEY"] = config.secret_key
     app.config["PROSODY_ENDPOINT"] = config.prosody_endpoint
-    app.config["SNIKKET_DOMAIN"] = config.domain
+    app.config["SNIKKET_DOMAIN"] = config.tweak_xmpp_domain or config.domain
     app.config["SITE_NAME"] = config.site_name or config.domain
     app.config["AVATAR_CACHE_TTL"] = config.avatar_cache_ttl
     app.config["APPLE_STORE_URL"] = config.apple_store_url
